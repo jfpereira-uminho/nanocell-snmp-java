@@ -1,0 +1,307 @@
+NANOCELL-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, Gauge32, Counter32,
+    TimeTicks, Unsigned32, enterprises
+        FROM SNMPv2-SMI
+
+    DisplayString
+        FROM SNMPv2-TC
+
+    MODULE-COMPLIANCE, OBJECT-GROUP
+        FROM SNMPv2-CONF;
+
+
+nanoCellMib MODULE-IDENTITY
+    LAST-UPDATED "202511100000Z"  -- YYYYMMDDhhmmZ
+    ORGANIZATION
+        "University of Minho"
+    CONTACT-INFO
+        "E-mail: thatemail@uminho.pt"
+    DESCRIPTION
+        "A simple MIB module for a nano-cell mobility simulation.
+
+         The MIB models a fixed set of cells (base stations) and
+         neighbor relations between them. The SNMP agent simulates
+         user (UE) mobility by moving users between cells according
+         to configured neighbor weights. The total number of UEs in
+         the system is constant; only their distribution across cells
+         changes over time.
+
+         This MIB is intended for educational use with Python (PySNMP)
+         and Java (SNMP4J) tutorials."
+    REVISION "202511100000Z"
+    DESCRIPTION
+        "Initial version of the NANO-CELL-MIB."
+    ::= { enterprises 88888 }   -- Replace 88888 with your enterprise number
+
+
+-- Top-level OID structure for this MIB
+
+nanoCellMibObjects     OBJECT IDENTIFIER ::= { nanoCellMib 1 }
+nanoCellMibConformance OBJECT IDENTIFIER ::= { nanoCellMib 2 }
+
+-- Subtrees under nanoCellMibObjects
+
+cellObjects     OBJECT IDENTIFIER ::= { nanoCellMibObjects 1 }
+neighborObjects OBJECT IDENTIFIER ::= { nanoCellMibObjects 2 }
+
+
+-- -------------------------------------------------------------
+-- Scalars
+-- -------------------------------------------------------------
+
+totalUEs OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Total number of user equipments (UEs) in the system.
+
+         This value is fixed for the duration of the simulation.
+         The agent maintains a constant number of UEs and only
+         redistributes them between cells."
+    ::= { cellObjects 1 }
+
+mobilityInterval OBJECT-TYPE
+    SYNTAX      TimeTicks
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The time interval between mobility updates in the simulation,
+         expressed in hundredths of a second (1/100 s).
+
+         For example, a value of 500 represents 5 seconds between
+         simulation steps. Adjusting this value allows the manager to
+         speed up or slow down the mobility process."
+    ::= { cellObjects 2 }
+
+
+-- -------------------------------------------------------------
+-- cellTable: Cells (base stations / nano-cells)
+-- -------------------------------------------------------------
+
+cellTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CellEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Table of cells (base stations / nano-cells) participating
+         in the mobility simulation. The number of rows in this table
+         is fixed for the duration of the simulation."
+    ::= { cellObjects 3 }
+
+cellEntry OBJECT-TYPE
+    SYNTAX      CellEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry describing a single cell in the simulation."
+    INDEX       { cellId }
+    ::= { cellTable 1 }
+
+CellEntry ::= SEQUENCE {
+    cellId               Unsigned32,
+    cellName             DisplayString,
+    cellMaxUsers         Unsigned32,
+    cellCurrentUsers     Gauge32,
+    cellHandoversInTotal Counter32,
+    cellHandoversOutTotal Counter32
+}
+
+cellId OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..4294967295)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A unique identifier for this cell within the cellTable.
+         The set of cellId values is fixed at initialization time
+         and does not change during the simulation."
+    ::= { cellEntry 1 }
+
+cellName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "A human-readable name for this cell, such as a label or
+         logical identifier."
+    ::= { cellEntry 2 }
+
+cellMaxUsers OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The maximum number of users (UEs) that this cell is allowed
+         to host simultaneously. The simulation logic should not
+         assign more than this number of UEs to the cell."
+    ::= { cellEntry 3 }
+
+cellCurrentUsers OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The current number of users (UEs) assigned to this cell.
+
+         This value is updated dynamically by the agent as users move
+         between cells in the simulation. The sum of cellCurrentUsers
+         over all cells should be equal to totalUEs."
+    ::= { cellEntry 4 }
+
+cellHandoversInTotal OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The total number of users that have arrived in this cell via
+         handover from other cells since the agent started."
+    ::= { cellEntry 5 }
+
+cellHandoversOutTotal OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The total number of users that have left this cell via
+         handover to other cells since the agent started."
+    ::= { cellEntry 6 }
+
+
+-- -------------------------------------------------------------
+-- cellNeighborTable: Directed neighbor relations between cells
+-- -------------------------------------------------------------
+
+cellNeighborTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF CellNeighborEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Table of neighbor relations between cells.
+
+         Each entry describes a directed neighbor relation from a
+         source cell to a neighbor cell. To represent bidirectional
+         connectivity, two entries are required (e.g., one for
+         sourceCellId=A, neighborCellId=B and another for
+         sourceCellId=B, neighborCellId=A)."
+    ::= { neighborObjects 1 }
+
+cellNeighborEntry OBJECT-TYPE
+    SYNTAX      CellNeighborEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry describing a directed neighbor relation from a
+         source cell to a neighbor cell. The agent uses the
+         neighborWeight to drive weighted random mobility of users
+         between cells."
+    INDEX       { sourceCellId, neighborCellId }
+    ::= { cellNeighborTable 1 }
+
+CellNeighborEntry ::= SEQUENCE {
+    sourceCellId   Unsigned32,
+    neighborCellId Unsigned32,
+    neighborWeight Unsigned32
+}
+
+sourceCellId OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..4294967295)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The identifier of the source cell for this neighbor
+         relation. The value of this object corresponds to a cellId
+         in cellTable."
+    ::= { cellNeighborEntry 1 }
+
+neighborCellId OBJECT-TYPE
+    SYNTAX      Unsigned32 (1..4294967295)
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The identifier of the neighbor cell for this relation. The
+         value of this object corresponds to a cellId in cellTable."
+    ::= { cellNeighborEntry 2 }
+
+neighborWeight OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The relative weight used when selecting this neighbor as a
+         target for user mobility from the source cell.
+
+         For a given sourceCellId, the agent considers all neighbor
+         entries with that same sourceCellId and interprets their
+         neighborWeight values as a set of weights in a weighted
+         random choice. Neighbors with higher weights are more likely
+         to receive users from the source cell.
+
+         A value of zero indicates that this neighbor relation should
+         not be used for mobility (i.e., it is effectively disabled)."
+    ::= { cellNeighborEntry 3 }
+
+
+-- -------------------------------------------------------------
+-- Conformance Information
+-- -------------------------------------------------------------
+
+nanoCellMibCompliances OBJECT IDENTIFIER ::= { nanoCellMibConformance 1 }
+nanoCellMibGroups      OBJECT IDENTIFIER ::= { nanoCellMibConformance 2 }
+
+-- Compliance statement
+
+nanoCellMibCompliance MODULE-COMPLIANCE
+    STATUS  current
+    DESCRIPTION
+        "The compliance statement for agents implementing the
+         NANO-CELL-MIB."
+    MODULE
+        MANDATORY-GROUPS {
+            nanoCellScalarGroup,
+            nanoCellCellGroup,
+            nanoCellNeighborGroup
+        }
+    ::= { nanoCellMibCompliances 1 }
+
+
+-- Object groups
+
+nanoCellScalarGroup OBJECT-GROUP
+    OBJECTS {
+        totalUEs,
+        mobilityInterval
+    }
+    STATUS  current
+    DESCRIPTION
+        "The group of scalar objects for the nano-cell mobility
+         simulation."
+    ::= { nanoCellMibGroups 1 }
+
+nanoCellCellGroup OBJECT-GROUP
+    OBJECTS {
+        cellName,
+        cellMaxUsers,
+        cellCurrentUsers,
+        cellHandoversInTotal,
+        cellHandoversOutTotal
+    }
+    STATUS  current
+    DESCRIPTION
+        "The group of objects that describe per-cell state and
+         counters."
+    ::= { nanoCellMibGroups 2 }
+
+nanoCellNeighborGroup OBJECT-GROUP
+    OBJECTS {
+        neighborWeight
+    }
+    STATUS  current
+    DESCRIPTION
+        "The group of objects that describe neighbor relations and
+         their weights."
+    ::= { nanoCellMibGroups 3 }
+
+
+END
