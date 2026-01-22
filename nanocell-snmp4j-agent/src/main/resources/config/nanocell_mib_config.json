@@ -1,0 +1,56 @@
+{
+  "totalUEs": 100,
+  "mobilityIntervalTicks": 200,
+  "cells": [
+    {
+      "cellId": 1,
+      "cellName": "Cell-A",
+      "cellMaxUsers": 30,
+      "cellCurrentUsers": 30
+    },
+    {
+      "cellId": 2,
+      "cellName": "Cell-B",
+      "cellMaxUsers": 50,
+      "cellCurrentUsers": 40
+    },
+    {
+      "cellId": 3,
+      "cellName": "Cell-C",
+      "cellMaxUsers": 40,
+      "cellCurrentUsers": 30
+    }
+  ],
+  "neighbors": [
+    {
+      "sourceCellId": 1,
+      "neighborCellId": 2,
+      "neighborWeight": 3
+    },
+    {
+      "sourceCellId": 1,
+      "neighborCellId": 3,
+      "neighborWeight": 1
+    },
+    {
+      "sourceCellId": 2,
+      "neighborCellId": 1,
+      "neighborWeight": 2
+    },
+    {
+      "sourceCellId": 2,
+      "neighborCellId": 3,
+      "neighborWeight": 2
+    },
+    {
+      "sourceCellId": 3,
+      "neighborCellId": 1,
+      "neighborWeight": 1
+    },
+    {
+      "sourceCellId": 3,
+      "neighborCellId": 2,
+      "neighborWeight": 3
+    }
+  ]
+}
